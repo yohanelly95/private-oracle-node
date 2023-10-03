@@ -280,7 +280,7 @@ jobs:
           name: razor_go.linux-arm64.tar.gz
       - name: Display structure of downloaded files
         run: ls -R
-      - name: Publish Release on GitHub
+      # - name: Publish Release on GitHub
         # run: |
         #   REPO_OWNER=${{ github.repository }} | cut -d'/' -f1
 
