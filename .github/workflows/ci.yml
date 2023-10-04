@@ -260,7 +260,7 @@ jobs:
     needs:
       - build-amd
       - build-arm
-    # if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -287,7 +287,6 @@ jobs:
 
       - name: Publish Release on GitHub
         uses: softprops/action-gh-release@v1
-        # if: startsWith(github.ref, 'refs/tags/')
         with:
           generate_release_notes: true
           files: |
