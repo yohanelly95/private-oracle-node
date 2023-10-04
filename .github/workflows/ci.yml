@@ -290,12 +290,13 @@ jobs:
           REPO_NAME=${{ github.repository }} | cut -d'/' -f2
 
           VERSION=$(git describe --tags --abbrev=0)
+          
+          echo $VERSION
+          # mv razor_go.linux-amd64.tar.gz razor_go.${VERSION}.linux-amd64.tar.gz
 
-          mv razor_go.linux-amd64.tar.gz razor_go.${VERSION}.linux-amd64.tar.gz
+          # mv razor_go.linux-arm64.tar.gz razor_go.${VERSION}.linux-arm64.tar.gz
 
-          mv razor_go.linux-arm64.tar.gz razor_go.${VERSION}.linux-arm64.tar.gz
-
-          ghr -t ${GITHUB_TOKEN} -u $REPO_OWNER -r $REPO_NAME ${VERSION} razor_go.${VERSION}.linux-amd64.tar.gz
+          # ghr -t ${GITHUB_TOKEN} -u $REPO_OWNER -r $REPO_NAME ${VERSION} razor_go.${VERSION}.linux-amd64.tar.gz
 
 
   push-docker-build:
