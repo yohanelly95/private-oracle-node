@@ -286,18 +286,24 @@ jobs:
         run: ls -R
 
       - name: Publish Release on GitHub
-        run: |
-          REPO_OWNER=${{ github.repository }} | cut -d'/' -f1
+        uses: softprops/action-gh-release@v1
+        # if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            razor_go.linux-arm64.tar.gz
+            razor_go.linux-amd64.tar.gz
+        # run: |
+        #   REPO_OWNER=${{ github.repository }} | cut -d'/' -f1
 
-          REPO_NAME=${{ github.repository }} | cut -d'/' -f2
+        #   REPO_NAME=${{ github.repository }} | cut -d'/' -f2
 
-          VERSION=$(git describe --tags --abbrev=0)
+        #   VERSION=$(git describe --tags --abbrev=0)
           
-          mv razor_go.linux-amd64.tar.gz razor_go.${VERSION}.linux-amd64.tar.gz
+        #   mv razor_go.linux-amd64.tar.gz razor_go.${VERSION}.linux-amd64.tar.gz
 
-          mv razor_go.linux-arm64.tar.gz razor_go.${VERSION}.linux-arm64.tar.gz
+        #   mv razor_go.linux-arm64.tar.gz razor_go.${VERSION}.linux-arm64.tar.gz
 
-          ghr -t ${GITHUB_TOKEN} -u $REPO_OWNER -r $REPO_NAME ${VERSION} razor_go.${VERSION}.linux-amd64.tar.gz
+        #   ghr -t ${GITHUB_TOKEN} -u $REPO_OWNER -r $REPO_NAME ${VERSION} razor_go.${VERSION}.linux-amd64.tar.gz
 
 
   push-docker-build:
