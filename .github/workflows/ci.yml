@@ -262,6 +262,14 @@ jobs:
       - build-arm
     # if: startsWith(github.ref, 'refs/tags/v')
     steps:
+     - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
       - name: Download Artifacts AMD
         uses: actions/download-artifact@v2
         with:
@@ -271,8 +279,10 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: razor_go.linux-arm64.tar.gz
+
       - name: Display structure of downloaded files
         run: ls -R
+
       - name: Publish Release on GitHub
         run: |
           REPO_OWNER=${{ github.repository }} | cut -d'/' -f1
