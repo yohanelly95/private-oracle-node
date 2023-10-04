@@ -167,9 +167,6 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.17.6
-      # - uses: bissolli/gh-action-persist-workspace@v1
-      #   with:
-      #     action: retrieve
 
       - name: Install Dependencies
         run: >
@@ -221,10 +218,6 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.17.6
-
-      # - uses: bissolli/gh-action-persist-workspace@v1
-      #   with:
-      #     action: retrieve
 
       - name: Install Dependencies
         run: >
@@ -280,19 +273,19 @@ jobs:
           name: razor_go.linux-arm64.tar.gz
       - name: Display structure of downloaded files
         run: ls -R
-      # - name: Publish Release on GitHub
-        # run: |
-        #   REPO_OWNER=${{ github.repository }} | cut -d'/' -f1
+      - name: Publish Release on GitHub
+        run: |
+          REPO_OWNER=${{ github.repository }} | cut -d'/' -f1
 
-        #   REPO_NAME=${{ github.repository }} | cut -d'/' -f2
+          REPO_NAME=${{ github.repository }} | cut -d'/' -f2
 
-        #   VERSION=$(git describe --tags --abbrev=0)
+          VERSION=$(git describe --tags --abbrev=0)
 
-        #   mv razor_go.linux-amd64.tar.gz razor_go.${VERSION}.linux-amd64.tar.gz
+          mv razor_go.linux-amd64.tar.gz razor_go.${VERSION}.linux-amd64.tar.gz
 
-        #   mv razor_go.linux-arm64.tar.gz razor_go.${VERSION}.linux-arm64.tar.gz
+          mv razor_go.linux-arm64.tar.gz razor_go.${VERSION}.linux-arm64.tar.gz
 
-        #   ghr -t ${GITHUB_TOKEN} -u $REPO_OWNER -r $REPO_NAME -c ${GITHUB_SHA} ${VERSION} razor_go.${VERSION}.linux-amd64.tar.gz
+          ghr -t ${GITHUB_TOKEN} -u $REPO_OWNER -r $REPO_NAME ${VERSION} razor_go.${VERSION}.linux-amd64.tar.gz
 
 
   push-docker-build:
