@@ -108,8 +108,8 @@ jobs:
             echo "abigen NOT found in $HOME/go/bin"
           fi
       
-      # - name: Add go binaries to PATH
-      #   run: echo "$HOME/go/bin" >> $GITHUB_PATH
+      - name: Add go binaries to PATH
+        run: echo "$HOME/go/bin" >> $GITHUB_PATH
 
       - name: Project Setup
         run: make setup
