@@ -77,24 +77,24 @@ jobs:
 
   # Build phase: create AMD64 and ARM64 artifacts
   build:
-    needs: test
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        platform: [amd64, arm64]
-    steps:
-      - name: Create ${{ matrix.platform }} Artifact
-        run: |
-          npm i
-          npm run build-noargs
-          cd build/bin
-          tar -czvf ${{ matrix.platform == 'amd64' and needs.setup.outputs.amd_artifact or needs.setup.outputs.arm_artifact }} razor
-          mv ${{ matrix.platform == 'amd64' and needs.setup.outputs.amd_artifact or needs.setup.outputs.arm_artifact }} ../../
-      - name: Upload ${{ matrix.platform }} Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.platform == 'amd64' and needs.setup.outputs.amd_artifact or needs.setup.outputs.arm_artifact }}
-          path: ${{ matrix.platform == 'amd64' and needs.setup.outputs.amd_artifact or needs.setup.outputs.arm_artifact }}
+  needs: test
+  runs-on: ubuntu-latest
+  strategy:
+    matrix:
+      platform: [amd64, arm64]
+  steps:
+    - name: Create ${{ matrix.platform }} Artifact
+      run: |
+        npm i
+        npm run build-noargs
+        cd build/bin
+        tar -czvf ${{ matrix.platform == 'amd64' ? needs.setup.outputs.amd_artifact : needs.setup.outputs.arm_artifact }} razor
+        mv ${{ matrix.platform == 'amd64' ? needs.setup.outputs.amd_artifact : needs.setup.outputs.arm_artifact }} ../../
+    - name: Upload ${{ matrix.platform }} Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ matrix.platform == 'amd64' ? needs.setup.outputs.amd_artifact : needs.setup.outputs.arm_artifact }}
+        path: ${{ matrix.platform == 'amd64' ? needs.setup.outputs.amd_artifact : needs.setup.outputs.arm_artifact }}
 
   # Release phase: download artifacts and release on GitHub
   publish-github-release:
