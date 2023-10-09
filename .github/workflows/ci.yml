@@ -3,14 +3,12 @@
 
 name: CI/CD Pipeline
 
-on: [push, pull_request, release]
+on: [push]
 
 permissions:
   contents: read
 
 env:
-  NODE_VERSION: '18'
-  GO_VERSION: '1.17.6'
   AMD_ARTIFACT_NAME: razor_go.linux-amd64.tar.gz
   ARM_ARTIFACT_NAME: razor_go.linux-arm64.tar.gz
 
@@ -34,12 +32,12 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v3
         with:
-          node-version: $NODE_VERSION
+          node-version: "18"
 
       - name: Setup Go Environment
         uses: actions/setup-go@v2
         with:
-          go-version: $GO_VERSION
+          go-version: "1.17.6"
 
       - name: Install Project Dependencies
         run: |
