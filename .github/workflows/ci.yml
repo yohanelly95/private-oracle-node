@@ -1,240 +1,140 @@
----
+# CI/CD Pipeline for Building and Releasing the Razor Application
+# Phases: Setup -> Test -> Build (AMD64 & ARM64) -> Release -> Docker Build
+
 name: CI/CD Pipeline
-on:
-  push:
-    tags:
-      - v*
-  pull_request:
-    branches:
-      - "*"
+
+on: [push, pull_request, release]
 
 permissions:
-  contents: write
+  contents: read
 
+env:
+  NODE_VERSION: '18'
+  GO_VERSION: '1.17.6'
+  AMD_ARTIFACT_NAME: razor_go.linux-amd64.tar.gz
+  ARM_ARTIFACT_NAME: razor_go.linux-arm64.tar.gz
 
+# Initial setup: Checkout, Node and Go setup, and dependencies installation.
 jobs:
-  test:
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      amd_artifact: ${{ steps.define.outputs.amd_artifact }}
+      arm_artifact: ${{ steps.define.outputs.arm_artifact }}
     steps:
-      - name: Checkout code
+      - name: Define Artifact Names
+        id: define
+        run: |
+          echo "::set-output name=amd_artifact::$AMD_ARTIFACT_NAME"
+          echo "::set-output name=arm_artifact::$ARM_ARTIFACT_NAME"
+      - name: Checkout Source Code
         uses: actions/checkout@v4
-      - name: Setup Node.js
+      - name: Setup Node.js Environment
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
-      - name: Setup Go
+          node-version: $NODE_VERSION
+      - name: Setup Go Environment
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17.6
-      - name: Install Dependencies
-        run: >
+          go-version: $GO_VERSION
+      - name: Install Project Dependencies
+        run: |
+          # Ethereum setup
           sudo add-apt-repository -y ppa:ethereum/ethereum
-
           sudo apt-get update
+          sudo apt-get install -y ethereum
 
-          sudo apt-get install -y npm ethereum
-
+          # Node.js and Go dependencies
           npm install
+          go get -d github.com/ethereum/go-ethereum@v1.10.8
+          go install github.com/ethereum/go-ethereum/cmd/abigen@v1.10.8
+          go install github.com/mattn/goveralls@v0.0.11
+          go install github.com/ory/go-acc@v0.2.7
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
 
-          go get -d github.com/ethereum/go-ethereum@v1.10.8 \
-
-          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.10.8 \
-
-          && go install github.com/mattn/goveralls@v0.0.11 \
-
-          && go install github.com/ory/go-acc@v0.2.7 \
-
-          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
-      - name: Run make setup
+  # Test phase: code setup, linting, unit tests, and benchmarking
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Project Setup
         run: make setup
-      - name: Run gofmt
+      - name: Check Code Formatting with gofmt
+        run: gofmt -l .
+      - name: Lint Code with golangci-lint
+        run: golangci-lint run -v --timeout 5m
+      - name: Execute Test Cases
         run: |
-          gofmt
-      - name: Run golangci-lint
-        run: |
-          golangci-lint run -v --timeout 5m
-      - name: Execute test case
-        run: >
           go-acc ./... --ignore razor/accounts/mocks --ignore razor/cmd/mocks
           --ignore razor/utils/mocks --ignore pkg --ignore razor/path/mocks
           --output coverage.txt
-      - name: Run benchmarks
-        run: |
-          go test ./... -bench=. -run=^#
-
-      - name: Publish Coverage to Coveralls.io
+      - name: Run Benchmarks
+        run: go test ./... -bench=. -run=^#
+      - name: Publish Coverage Report
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: goveralls -coverprofile=coverage.txt -service=github
 
-      - uses: bissolli/gh-action-persist-workspace@v1
-        with:
-          action: persist
-
-
-  build-amd:
-    runs-on: ubuntu-latest
+  # Build phase: create AMD64 and ARM64 artifacts
+  build:
     needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "18"
-
-      - name: Setup Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17.6
-
-      - name: Install Dependencies
-        run: >
-          sudo add-apt-repository -y ppa:ethereum/ethereum
-
-          sudo apt-get update
-
-          sudo apt-get install -y npm ethereum
-
-          npm install
-
-          go get -d github.com/ethereum/go-ethereum@v1.10.8 \
-
-          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.10.8 \
-
-          && go install github.com/mattn/goveralls@v0.0.11 \
-
-          && go install github.com/ory/go-acc@v0.2.7 \
-
-          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
-
-      - name: Create AMD Artifact
+      - name: Create ${{ matrix.platform }} Artifact
         run: |
-          # ... [commands to create AMD artifact]
           npm i
           npm run build-noargs
           cd build/bin
-          tar -czvf razor_go.linux-amd64.tar.gz razor
-          mv razor_go.linux-amd64.tar.gz ../../
-
-      - name: Upload AMD Artifact
+          tar -czvf ${{ matrix.platform == 'amd64' and needs.setup.outputs.amd_artifact or needs.setup.outputs.arm_artifact }} razor
+          mv ${{ matrix.platform == 'amd64' and needs.setup.outputs.amd_artifact or needs.setup.outputs.arm_artifact }} ../../
+      - name: Upload ${{ matrix.platform }} Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: razor_go.linux-amd64.tar.gz
-          path: razor_go.linux-amd64.tar.gz
-  build-arm:
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "18"
+          name: ${{ matrix.platform == 'amd64' and needs.setup.outputs.amd_artifact or needs.setup.outputs.arm_artifact }}
+          path: ${{ matrix.platform == 'amd64' and needs.setup.outputs.amd_artifact or needs.setup.outputs.arm_artifact }}
 
-      - name: Setup Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17.6
-
-      - name: Install Dependencies
-        run: >
-          sudo add-apt-repository -y ppa:ethereum/ethereum
-
-          sudo apt-get update
-
-          sudo apt-get install -y npm ethereum
-
-          npm install
-
-          go get -d github.com/ethereum/go-ethereum@v1.10.8 \
-
-          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.10.8 \
-
-          && go install github.com/mattn/goveralls@v0.0.11 \
-
-          && go install github.com/ory/go-acc@v0.2.7 \
-
-          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
-
-      - name: Create ARM Artifact
-        run: |
-          # ... [commands to create ARM artifact]
-          npm i
-          npm run build-noargs
-          cd build/bin
-          tar -czvf razor_go.linux-arm64.tar.gz razor
-          mv razor_go.linux-arm64.tar.gz ../../
-
-      - name: Upload ARM Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: razor_go.linux-arm64.tar.gz
-          path: razor_go.linux-arm64.tar.gz
-
-
+  # Release phase: download artifacts and release on GitHub
   publish-github-release:
     runs-on: ubuntu-latest
-    needs:
-      - build-amd
-      - build-arm
+    needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - name: Checkout code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-        
-      - name: Setup Node.js
+      - name: Setup Node.js Environment
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
-
-      - name: Download Artifacts AMD
+          node-version: $NODE_VERSION
+      - name: Download Artifacts
         uses: actions/download-artifact@v2
-        with:
-          name: razor_go.linux-amd64.tar.gz
-
-      - name: Download Artifacts ARM
-        uses: actions/download-artifact@v2
-        with:
-          name: razor_go.linux-arm64.tar.gz
-
-      - name: Display structure of downloaded files
+      - name: List Downloaded Files
         run: ls -R
-
-      - name: Publish Release on GitHub
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           draft: true
           generate_release_notes: true
           files: |
-            razor_go.linux-arm64.tar.gz
-            razor_go.linux-amd64.tar.gz
+            ${{ needs.setup.outputs.amd_artifact }}
+            ${{ needs.setup.outputs.arm_artifact }}
 
+  # Docker phase: build and push Docker images
   push-docker-build:
     runs-on: ubuntu-latest
     needs: test
-    if: startsWith(github.ref, 'refs/tags/v')
+    # if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - name: Checkout code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
-      - name: Set up Docker Buildx
+      - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v1
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract tag name
+      - name: Extract Release Tag
         id: extract_tag
         run: echo "::set-output name=tag_name::${GITHUB_REF#refs/tags/}"
-
-      - name: Build and push Docker image
+      - name: Build and Push Docker Images
         uses: docker/build-push-action@v2
         with:
           context: .
