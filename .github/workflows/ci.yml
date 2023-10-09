@@ -57,7 +57,7 @@ jobs:
           go install github.com/ethereum/go-ethereum/cmd/abigen@v1.10.8
           go install github.com/mattn/goveralls@v0.0.11
           go install github.com/ory/go-acc@v0.2.7
-          # go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
+          # go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
       - name: Cache Node modules
         uses: actions/cache@v2
