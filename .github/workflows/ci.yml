@@ -260,10 +260,10 @@ jobs:
       #   run: |
       #     golangci-lint run -v --timeout 5m
       - name: Lint source code
-      uses: golangci/golangci-lint-action@v3
-      with:
-        version: v1.54.2
-        args: --timeout=5m
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.54.2
+          args: --timeout=5m
 
       - name: Execute test case
         run: >
