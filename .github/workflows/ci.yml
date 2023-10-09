@@ -113,7 +113,6 @@ jobs:
       
       - name: Set GOROOT
         run: echo "GOROOT=$(go env GOROOT)" >> $GITHUB_ENV
-        shell: /usr/bin/bash -e {0}
 
       - name: Project Setup
         run: make setup
@@ -128,8 +127,6 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: v1.46.2
-        env:
-          GOROOT: ${{ steps.prep.outputs.GOROOT }}
 
       - name: Execute Test Cases
         run: |
