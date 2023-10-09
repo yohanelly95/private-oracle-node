@@ -111,11 +111,9 @@ jobs:
       - name: Add go binaries to PATH
         run: echo "$HOME/go/bin" >> $GITHUB_PATH
       
-      - name: "Prepare"
-        id: prep
-        run: |
-          GOROOT=$(go env GOROOT)
-          echo ::set-output name=GOROOT::${GOROOT}
+      - name: Set GOROOT
+        run: echo "GOROOT=$(go env GOROOT)" >> $GITHUB_ENV
+        shell: /usr/bin/bash -e {0}
 
       - name: Project Setup
         run: make setup
