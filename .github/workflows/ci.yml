@@ -126,7 +126,7 @@ jobs:
       - name: "Lint Code with golangci-lint"
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.46.2
+          version: latest
 
       - name: Execute Test Cases
         run: |
