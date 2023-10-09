@@ -99,6 +99,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Print PATH and Check abigen
+        run: |
+          echo "PATH: $PATH"
+          if [ -f "$HOME/go/bin/abigen" ]; then
+            echo "abigen is present in $HOME/go/bin"
+          else
+            echo "abigen NOT found in $HOME/go/bin"
+          fi
+      
+      - name: Add go binaries to PATH
+        run: echo "$HOME/go/bin" >> $GITHUB_PATH
+
       - name: Project Setup
         run: make setup
 
