@@ -27,16 +27,20 @@ jobs:
         run: |
           echo "::set-output name=amd_artifact::$AMD_ARTIFACT_NAME"
           echo "::set-output name=arm_artifact::$ARM_ARTIFACT_NAME"
+
       - name: Checkout Source Code
         uses: actions/checkout@v4
+
       - name: Setup Node.js Environment
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: $NODE_VERSION
+
       - name: Setup Go Environment
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17.6
+          go-version: $GO_VERSION
+
       - name: Install Project Dependencies
         run: |
           # Ethereum setup
@@ -45,37 +49,79 @@ jobs:
           sudo apt-get install -y ethereum
 
           # Node.js and Go dependencies
-          npm install
+          if [ ! -d "node_modules" ]; then
+            npm install
+          fi
           go get -d github.com/ethereum/go-ethereum@v1.10.8
           go install github.com/ethereum/go-ethereum/cmd/abigen@v1.10.8
           go install github.com/mattn/goveralls@v0.0.11
           go install github.com/ory/go-acc@v0.2.7
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
+      - name: Cache Node modules
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Cache Go modules
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
   # Test phase: code setup, linting, unit tests, and benchmarking
   test:
     needs: setup
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Restore Node modules from cache
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Restore Go modules from cache
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
       - name: Project Setup
         run: make setup
+
       - name: Check Code Formatting with gofmt
         run: gofmt -l .
+
       - name: Lint Code with golangci-lint
         run: golangci-lint run -v --timeout 5m
+
       - name: Execute Test Cases
         run: |
           go-acc ./... --ignore razor/accounts/mocks --ignore razor/cmd/mocks
           --ignore razor/utils/mocks --ignore pkg --ignore razor/path/mocks
           --output coverage.txt
+
       - name: Run Benchmarks
         run: go test ./... -bench=. -run=^#
+
       - name: Publish Coverage Report
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: goveralls -coverprofile=coverage.txt -service=github
 
-  # Build phase: create AMD64 and ARM64 artifacts
+
+# Build phase: create AMD64 and ARM64 artifacts
   build:
     needs: test
     runs-on: ubuntu-latest
@@ -141,3 +187,5 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8
           push: true
           tags: coolsamosa/node-test:${{ steps.extract_tag.outputs.tag_name }}
+
+
