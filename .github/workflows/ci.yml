@@ -108,6 +108,7 @@ jobs:
           # ... [commands to create AMD artifact]
           npm i
           GOOS=linux GOARCH=amd64 go build -o ./build/bin/razor_go.linux-amd64 main.go
+          cd build/bin
           tar -czvf razor_go.linux-amd64.tar.gz razor_go.linux-amd64
           mv razor_go.linux-amd64.tar.gz ../../
 
@@ -163,6 +164,7 @@ jobs:
           # mv razor_go.linux-arm64.tar.gz ../../
           npm i
           GOOS=linux GOARCH=arm64 go build -o ./build/bin/razor_go.linux-arm64 main.go
+          cd build/bin
           tar -czvf razor_go.linux-arm64.tar.gz razor_go.linux-arm64
           mv razor_go.linux-arm64.tar.gz ../../
 
