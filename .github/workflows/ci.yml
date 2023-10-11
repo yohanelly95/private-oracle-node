@@ -106,7 +106,7 @@ jobs:
       - name: Create AMD Artifact
         run: |
           # ... [commands to create AMD artifact]
-          npm i
+          # npm i
           GOOS=linux GOARCH=amd64 go build -o ./build/bin/razor_go.linux-amd64 main.go
           cd build/bin
           tar -czvf razor_go.linux-amd64.tar.gz razor_go.linux-amd64
