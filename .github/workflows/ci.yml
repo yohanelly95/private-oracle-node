@@ -107,9 +107,8 @@ jobs:
         run: |
           # ... [commands to create AMD artifact]
           npm i
-          npm run build-noargs
-          cd build/bin
-          tar -czvf razor_go.linux-amd64.tar.gz razor
+          GOOS=linux GOARCH=amd64 go build -o ./build/bin/razor_go.linux-amd64 main.go
+          tar -czvf razor_go.linux-amd64.tar.gz razor_go.linux-amd64
           mv razor_go.linux-amd64.tar.gz ../../
 
       - name: Upload AMD Artifact
@@ -157,10 +156,14 @@ jobs:
       - name: Create ARM Artifact
         run: |
           # ... [commands to create ARM artifact]
+          # npm i
+          # npm run build-noargs
+          # cd build/bin
+          # tar -czvf razor_go.linux-arm64.tar.gz razor
+          # mv razor_go.linux-arm64.tar.gz ../../
           npm i
-          npm run build-noargs
-          cd build/bin
-          tar -czvf razor_go.linux-arm64.tar.gz razor
+          GOOS=linux GOARCH=arm64 go build -o ./build/bin/razor_go.linux-arm64 main.go
+          tar -czvf razor_go.linux-arm64.tar.gz razor_go.linux-arm64
           mv razor_go.linux-arm64.tar.gz ../../
 
       - name: Upload ARM Artifact
