@@ -106,7 +106,6 @@ jobs:
       - name: Create AMD Artifact
         run: |
           # ... [commands to create AMD artifact]
-          # npm i
           make setup
           GOOS=linux GOARCH=amd64 go build -o ./build/bin/razor_go.linux-amd64 main.go
           cd build/bin
@@ -158,12 +157,6 @@ jobs:
       - name: Create ARM Artifact
         run: |
           # ... [commands to create ARM artifact]
-          # npm i
-          # npm run build-noargs
-          # cd build/bin
-          # tar -czvf razor_go.linux-arm64.tar.gz razor
-          # mv razor_go.linux-arm64.tar.gz ../../
-          # npm i
           make setup
           GOOS=linux GOARCH=arm64 go build -o ./build/bin/razor_go.linux-arm64 main.go
           cd build/bin
@@ -182,7 +175,7 @@ jobs:
     needs:
       - build-amd
       - build-arm
-    # if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
