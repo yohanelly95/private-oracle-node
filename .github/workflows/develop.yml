@@ -92,4 +92,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64/v8
           push: true
-          tags: coolsamosa/node-test:${{ steps.extract_tag.outputs.tag_name }}
+          tags: coolsamosa/node-test:${{ steps.sha.outputs.short }}
