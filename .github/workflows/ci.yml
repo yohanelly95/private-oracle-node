@@ -7,6 +7,9 @@ on:
   pull_request:
     branches:
       - "*"
+    types:
+      - opened
+      - synchronize
 
 permissions:
   contents: write
@@ -25,7 +28,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17.6
+          go-version: 1.21
       - name: Install Dependencies
         run: >
           sudo add-apt-repository -y ppa:ethereum/ethereum
@@ -36,23 +39,25 @@ jobs:
 
           npm install
 
-          go get -d github.com/ethereum/go-ethereum@v1.10.8 \
+          go get -d github.com/ethereum/go-ethereum@v1.12.2 \
 
-          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.10.8 \
+          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.12.2 \
 
           && go install github.com/mattn/goveralls@v0.0.11 \
 
           && go install github.com/ory/go-acc@v0.2.7 \
 
-          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
+          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
       - name: Run make setup
         run: make setup
       - name: Run gofmt
         run: |
           gofmt
+
       - name: Run golangci-lint
         run: |
           golangci-lint run -v --timeout 5m
+
       - name: Execute test case
         run: >
           go-acc ./... --ignore razor/accounts/mocks --ignore razor/cmd/mocks
@@ -61,10 +66,10 @@ jobs:
       - name: Run benchmarks
         run: |
           go test ./... -bench=. -run=^#
-      # COVERALLS_TOKEN needs to be added to repo secrets
-      # - name: Publish Coverage to Coveralls.io
-      #   run: >
-      #     goveralls -coverprofile=coverage.txt -service github -repotoken ${{secrets.COVERALLS_TOKEN }}
+      - name: Publish Coverage to Coveralls.io
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: goveralls -coverprofile=coverage.txt -service=github
       - uses: bissolli/gh-action-persist-workspace@v1
         with:
           action: persist
@@ -85,7 +90,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17.6
+          go-version: 1.21
 
       - name: Install Dependencies
         run: >
@@ -97,23 +102,23 @@ jobs:
 
           npm install
 
-          go get -d github.com/ethereum/go-ethereum@v1.10.8 \
+          go get -d github.com/ethereum/go-ethereum@v1.12.2 \
 
-          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.10.8 \
+          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.12.2 \
 
           && go install github.com/mattn/goveralls@v0.0.11 \
 
           && go install github.com/ory/go-acc@v0.2.7 \
 
-          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
+          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
 
       - name: Create AMD Artifact
         run: |
           # ... [commands to create AMD artifact]
-          npm i
-          npm run build-noargs
+          make setup
+          GOOS=linux GOARCH=amd64 go build -o ./build/bin/razor_go.linux-amd64 main.go
           cd build/bin
-          tar -czvf razor_go.linux-amd64.tar.gz razor
+          tar -czvf razor_go.linux-amd64.tar.gz razor_go.linux-amd64
           mv razor_go.linux-amd64.tar.gz ../../
 
       - name: Upload AMD Artifact
@@ -136,7 +141,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.17.6
+          go-version: 1.21
 
       - name: Install Dependencies
         run: >
@@ -148,23 +153,23 @@ jobs:
 
           npm install
 
-          go get -d github.com/ethereum/go-ethereum@v1.10.8 \
+          go get -d github.com/ethereum/go-ethereum@v1.12.2 \
 
-          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.10.8 \
+          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.12.2 \
 
           && go install github.com/mattn/goveralls@v0.0.11 \
 
           && go install github.com/ory/go-acc@v0.2.7 \
 
-          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2
+          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
 
       - name: Create ARM Artifact
         run: |
           # ... [commands to create ARM artifact]
-          npm i
-          npm run build-noargs
+          make setup
+          GOOS=linux GOARCH=arm64 go build -o ./build/bin/razor_go.linux-arm64 main.go
           cd build/bin
-          tar -czvf razor_go.linux-arm64.tar.gz razor
+          tar -czvf razor_go.linux-arm64.tar.gz razor_go.linux-arm64
           mv razor_go.linux-arm64.tar.gz ../../
 
       - name: Upload ARM Artifact
@@ -239,3 +244,4 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8
           push: true
           tags: coolsamosa/node-test:${{ steps.extract_tag.outputs.tag_name }}
+
