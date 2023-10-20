@@ -15,14 +15,16 @@ setup-testnet: fetch_bindings_testnet
 fetch_bindings:
 	@echo "Installing contract dependencies..."
 	@echo ""
-	@${SHELL} generate-bindings.sh --environment mainnet
+	@${SHELL} update-chainId.sh mainnet
+	@${SHELL} generate-bindings.sh mainnet
 	@echo "Contract bindings generated...."
 	@echo ""
 
 fetch_bindings_testnet:
 	@echo "Installing contract dependencies..."
 	@echo ""
-	@${SHELL} generate-bindings.sh --environment testnet
+	@${SHELL} update-chainId.sh testnet
+	@${SHELL} generate-bindings.sh testnet
 	@echo "Contract bindings generated...."
 	@echo ""
 
