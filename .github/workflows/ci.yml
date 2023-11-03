@@ -63,7 +63,8 @@ jobs:
 
       - name: Create tarballs
         run: |
-          tar -czf bin.tar.gz $(go env GOPATH)/bin
+          mkdir bin && mv $(go env GOPATH)/bin/* bin/
+          tar -czf bin.tar.gz bin/
           tar -czf node_modules.tar.gz node_modules/
 
       - name: Archive tarballs
@@ -77,9 +78,6 @@ jobs:
   test:
     needs: setup-environment
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -92,13 +90,15 @@ jobs:
 
       - name: Extract tarballs
         run: |
-          tar -xzf bin.tar.gz -C ./
-          tar -xzf node_modules.tar.gz -C ./
+          tar -xzf bin.tar.gz
+          tar -xzf node_modules.tar.gz
+
 
       - name: Restore binaries
         run: |
-         mv bin/* $(go env GOPATH)/bin/
-         chmod +x $(go env GOPATH)/bin/*
+          mv bin/* $(go env GOPATH)/bin/
+          chmod +x $(go env GOPATH)/bin/*
+
 
       - name: Run make setup for mainnet
         run: make setup
