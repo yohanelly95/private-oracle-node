@@ -61,7 +61,7 @@ jobs:
           restore-keys: |
             ${{ runner.OS }}-go-mod-
 
-       - name: Create tarballs
+      - name: Create tarballs
         run: |
           tar -czf bin.tar.gz $(go env GOPATH)/bin
           tar -czf node_modules.tar.gz node_modules/
