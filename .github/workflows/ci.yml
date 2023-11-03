@@ -90,9 +90,12 @@ jobs:
 
       - name: Extract tarballs
         run: |
-          tar -xzf bin.tar.gz
+          tar -xzf bin.tar.gz 
           tar -xzf node_modules.tar.gz
 
+      - name: List directories (Debugging)
+        run: |
+          ls -al
 
       - name: Restore binaries
         run: |
@@ -100,7 +103,9 @@ jobs:
           mv * $(go env GOPATH)/bin/
           chmod +x $(go env GOPATH)/bin/*
 
-
+      - name: List directories (Debugging)
+        run: |
+          ls -al
 
       - name: Run make setup for mainnet
         run: make setup
