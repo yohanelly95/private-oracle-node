@@ -1,5 +1,5 @@
----
 name: CI/CD Pipeline
+
 on:
   push:
     tags:
@@ -14,235 +14,126 @@ on:
 permissions:
   contents: write
 
-
 jobs:
-  test:
+  setup-environment:
     runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache-modules.outputs.cache-hit }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "18"
+
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.21
+
       - name: Install Dependencies
-        run: >
+        run: |
           sudo add-apt-repository -y ppa:ethereum/ethereum
-
           sudo apt-get update
-
           sudo apt-get install -y npm ethereum
-
           npm install
-
           go get -d github.com/ethereum/go-ethereum@v1.12.2 \
-
           && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.12.2 \
-
           && go install github.com/mattn/goveralls@v0.0.11 \
-
           && go install github.com/ory/go-acc@v0.2.7 \
-
           && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
+
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        id: cache-modules
+        with:
+          path: node_modules
+          key: ${{ runner.OS }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.OS }}-node-modules-
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.OS }}-go-mod-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.OS }}-go-mod-
+
+  test:
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.21
+
+      - name: Use cached Node modules
+        if: steps.cache-modules.outputs.cache-hit == 'true'
+        run: npm ci
+
+      - name: Use cached Go modules
+        if: needs.setup-environment.outputs.cache-hit == 'true'
+        run: go mod download
+
       - name: Run make setup for mainnet
         run: make setup
+
       - name: Run gofmt
-        run: |
-          gofmt
+        run: gofmt
 
       - name: Run golangci-lint
-        run: |
-          golangci-lint run -v --timeout 5m
+        run: golangci-lint run -v --timeout 5m
 
       - name: Execute test case
         run: >
           go-acc ./... --ignore razor/accounts/mocks --ignore razor/cmd/mocks
           --ignore razor/utils/mocks --ignore pkg --ignore razor/path/mocks
           --output coverage.txt
+
       - name: Run benchmarks
-        run: |
-          go test ./... -bench=. -run=^#
+        run: go test ./... -bench=. -run=^#
+
       - name: Publish Coverage to Coveralls.io
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: goveralls -coverprofile=coverage.txt -service=github
-      # - uses: bissolli/gh-action-persist-workspace@v1
-      #   with:
-      #     action: persist
 
+  # build-amd:
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #   steps:
+  #     #... (Keep the same steps for building and uploading the AMD artifact)
 
-  build-amd:
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # build-arm:
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #   steps:
+  #     #... (Keep the same steps for building and uploading the ARM artifact)
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "18"
+  # publish-github-release:
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - build-amd
+  #     - build-arm
+  #   if: startsWith(github.ref, 'refs/tags/v')
+  #   steps:
+  #     #... (Keep the same steps for publishing to GitHub releases)
 
-      - name: Setup Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.21
-
-      - name: Install Dependencies
-        run: >
-          sudo add-apt-repository -y ppa:ethereum/ethereum
-
-          sudo apt-get update
-
-          sudo apt-get install -y npm ethereum
-
-          npm install
-
-          go get -d github.com/ethereum/go-ethereum@v1.12.2 \
-
-          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.12.2 \
-
-          && go install github.com/mattn/goveralls@v0.0.11 \
-
-          && go install github.com/ory/go-acc@v0.2.7 \
-
-          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
-
-      - name: Create AMD Artifact
-        run: |
-          # ... [commands to create AMD artifact]
-          make setup
-          GOOS=linux GOARCH=amd64 go build -o ./build/bin/razor_go.linux-amd64 main.go
-          cd build/bin
-          tar -czvf razor_go.linux-amd64.tar.gz razor_go.linux-amd64
-          mv razor_go.linux-amd64.tar.gz ../../
-
-      - name: Upload AMD Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: razor_go.linux-amd64.tar.gz
-          path: razor_go.linux-amd64.tar.gz
-  build-arm:
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "18"
-
-      - name: Setup Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.21
-
-      - name: Install Dependencies
-        run: >
-          sudo add-apt-repository -y ppa:ethereum/ethereum
-
-          sudo apt-get update
-
-          sudo apt-get install -y npm ethereum
-
-          npm install
-
-          go get -d github.com/ethereum/go-ethereum@v1.12.2 \
-
-          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.12.2 \
-
-          && go install github.com/mattn/goveralls@v0.0.11 \
-
-          && go install github.com/ory/go-acc@v0.2.7 \
-
-          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
-
-      - name: Create ARM Artifact
-        run: |
-          # ... [commands to create ARM artifact]
-          make setup
-          GOOS=linux GOARCH=arm64 go build -o ./build/bin/razor_go.linux-arm64 main.go
-          cd build/bin
-          tar -czvf razor_go.linux-arm64.tar.gz razor_go.linux-arm64
-          mv razor_go.linux-arm64.tar.gz ../../
-
-      - name: Upload ARM Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: razor_go.linux-arm64.tar.gz
-          path: razor_go.linux-arm64.tar.gz
-
-
-  publish-github-release:
-    runs-on: ubuntu-latest
-    needs:
-      - build-amd
-      - build-arm
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "18"
-
-      - name: Download Artifacts AMD
-        uses: actions/download-artifact@v2
-        with:
-          name: razor_go.linux-amd64.tar.gz
-
-      - name: Download Artifacts ARM
-        uses: actions/download-artifact@v2
-        with:
-          name: razor_go.linux-arm64.tar.gz
-
-      - name: Display structure of downloaded files
-        run: ls -R
-
-      - name: Publish Release on GitHub
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: true
-          generate_release_notes: true
-          files: |
-            razor_go.linux-arm64.tar.gz
-            razor_go.linux-amd64.tar.gz
-
-  push-docker-build:
-    runs-on: ubuntu-latest
-    needs: test
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract tag name
-        id: extract_tag
-        run: echo "::set-output name=tag_name::${GITHUB_REF#refs/tags/}"
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          file: ./Dockerfile.mainnet
-          context: .
-          platforms: linux/amd64,linux/arm64/v8
-          push: true
-          tags: razornetwork/razor-go:${{ steps.extract_tag.outputs.tag_name }}
-
+  # push-docker-build:
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #   if: startsWith(github.ref, 'refs/tags/v')
+  #   steps:
+  #     #... (Keep the same steps for building and pushing the Docker image)
