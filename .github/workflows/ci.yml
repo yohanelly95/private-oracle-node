@@ -87,10 +87,10 @@ jobs:
 
       - name: Restore binaries
         run: |
-          mv bin/* $(go env GOPATH)/bin/
-          chmod +x $(go env GOPATH)/bin/*
+         mv bin/* $(go env GOPATH)/bin/
+         chmod +x $(go env GOPATH)/bin/*
 
-     - name: Run make setup for mainnet
+      - name: Run make setup for mainnet
         run: make setup
 
       - name: Run gofmt
