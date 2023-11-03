@@ -61,13 +61,18 @@ jobs:
           restore-keys: |
             ${{ runner.OS }}-go-mod-
 
-      - name: Archive binaries
+       - name: Create tarballs
+        run: |
+          tar -czf bin.tar.gz $(go env GOPATH)/bin
+          tar -czf node_modules.tar.gz node_modules/
+
+      - name: Archive tarballs
         uses: actions/upload-artifact@v2
         with:
           name: binaries
           path: |
-            $(go env GOPATH)/bin
-            node_modules/
+            bin.tar.gz
+            node_modules.tar.gz
 
   test:
     needs: setup-environment
@@ -79,11 +84,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download binaries
+      - name: Download Tarballs
         uses: actions/download-artifact@v2
         with:
           name: binaries
           path: ./
+
+      - name: Extract tarballs
+        run: |
+          tar -xzf bin.tar.gz -C ./
+          tar -xzf node_modules.tar.gz -C ./
 
       - name: Restore binaries
         run: |
