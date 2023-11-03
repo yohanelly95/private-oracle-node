@@ -96,8 +96,10 @@ jobs:
 
       - name: Restore binaries
         run: |
-          mv bin/* $(go env GOPATH)/bin/
+          mkdir -p $(go env GOPATH)/bin/
+          mv * $(go env GOPATH)/bin/
           chmod +x $(go env GOPATH)/bin/*
+
 
 
       - name: Run make setup for mainnet
