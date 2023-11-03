@@ -103,18 +103,10 @@ jobs:
           tar -xzf bin.tar.gz 
           tar -xzf node_modules.tar.gz
 
-      - name: List directories (Debugging)
-        run: |
-          ls -al
-
       - name: Restore binaries
         run: |
          mv bin/* $(go env GOPATH)/bin/
          chmod +x $(go env GOPATH)/bin/*
-
-      - name: List directories (Debugging)
-        run: |
-          ls -al
 
       - name: Run make setup for mainnet
         run: make setup
@@ -140,61 +132,54 @@ jobs:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: goveralls -coverprofile=coverage.txt -service=github
 
-  # test-upstream:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: "18"
-  #     - name: Setup Go
-  #       uses: actions/setup-go@v2
-  #       with:
-  #         go-version: 1.21
-  #     - name: Install Dependencies
-  #       run: >
-  #         sudo add-apt-repository -y ppa:ethereum/ethereum
+  build:
+    runs-on: ubuntu-latest
+    needs: 
+      - setup-environment
+      - test
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #         sudo apt-get update
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.21
 
-  #         sudo apt-get install -y npm ethereum
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
 
-  #         npm install
+      - name: Download Tarballs
+        uses: actions/download-artifact@v2
+        with:
+          name: binaries
+          path: ./
 
-  #         go get -d github.com/ethereum/go-ethereum@v1.12.2 \
+      - name: Extract tarballs
+        run: |
+          tar -xzf bin.tar.gz 
+          tar -xzf node_modules.tar.gz
 
-  #         && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.12.2 \
+      - name: Restore binaries
+        run: |
+         mv bin/* $(go env GOPATH)/bin/
+         chmod +x $(go env GOPATH)/bin/*
 
-  #         && go install github.com/mattn/goveralls@v0.0.11 \
+      - name: Create Artifact
+        run: |
+          make setup
+          GOOS=linux GOARCH=${{ matrix.arch }} go build -o ./build/bin/razor_go.linux-${{ matrix.arch }} main.go
+          cd build/bin
+          tar -czvf razor_go.linux-${{ matrix.arch }}.tar.gz razor_go.linux-${{ matrix.arch }}
+          mv razor_go.linux-${{ matrix.arch }}.tar.gz ../../
 
-  #         && go install github.com/ory/go-acc@v0.2.7 \
-
-  #         && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
-
-  #     - name: List directories (Debugging)
-  #       run: |
-  #         ls -al
-  #     # - name: Run make setup for mainnet
-  #     #   run: make setup
-  #     # - name: Run gofmt
-  #     #   run: |
-  #     #     gofmt
-
-  #     # - name: Run golangci-lint
-  #     #   run: |
-  #     #     golangci-lint run -v --timeout 5m
-
-  #     # - name: Execute test case
-  #     #   run: >
-  #     #     go-acc ./... --ignore razor/accounts/mocks --ignore razor/cmd/mocks
-  #     #     --ignore razor/utils/mocks --ignore pkg --ignore razor/path/mocks
-  #     #     --output coverage.txt
-  #     # - name: Run benchmarks
-  #     #   run: |
-  #     #     go test ./... -bench=. -run=^#
-  #     # - name: Publish Coverage to Coveralls.io
-  #     #   env:
-  #     #     COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #     #   run: goveralls -coverprofile=coverage.txt -service=github
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: razor_go.linux-${{ matrix.arch }}.tar.gz
+          path: razor_go.linux-${{ matrix.arch }}.tar.gz
