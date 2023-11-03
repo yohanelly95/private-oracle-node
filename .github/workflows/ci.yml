@@ -18,7 +18,7 @@ jobs:
   setup-environment:
     runs-on: ubuntu-latest
     outputs:
-      cache-hit: ${{ steps.cache-modules.outputs.cache-hit }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,15 +39,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y npm ethereum
           npm install
-          go get -d github.com/ethereum/go-ethereum@v1.12.2 \
-          && go install github.com/ethereum/go-ethereum/cmd/abigen@v1.12.2 \
-          && go install github.com/mattn/goveralls@v0.0.11 \
-          && go install github.com/ory/go-acc@v0.2.7 \
-          && go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
-
+          go get -d github.com/ethereum/go-ethereum@v1.12.2
+          go install github.com/ethereum/go-ethereum/cmd/abigen@v1.12.2
+          go install github.com/mattn/goveralls@v0.0.11
+          go install github.com/ory/go-acc@v0.2.7
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.2
+        
       - name: Cache Node modules
         uses: actions/cache@v3
-        id: cache-modules
         with:
           path: node_modules
           key: ${{ runner.OS }}-node-modules-${{ hashFiles('**/package-lock.json') }}
@@ -62,78 +61,68 @@ jobs:
           restore-keys: |
             ${{ runner.OS }}-go-mod-
 
+      - name: Archive binaries
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries
+          path: |
+            $(go env GOPATH)/bin
+            node_modules/
+
   test:
-    runs-on: ubuntu-latest
     needs: setup-environment
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+
+      - name: Download binaries
+        uses: actions/download-artifact@v2
         with:
-          node-version: "18"
+          name: binaries
+          path: ./
 
-      - name: Setup Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.21
+      - name: Restore binaries
+        run: |
+          mv bin/* $(go env GOPATH)/bin/
+          chmod +x $(go env GOPATH)/bin/*
 
-      - name: Use cached Node modules
-        if: steps.cache-modules.outputs.cache-hit == 'true'
-        run: npm ci
-
-      - name: Use cached Go modules
-        if: needs.setup-environment.outputs.cache-hit == 'true'
-        run: go mod download
-
-      - name: Run make setup for mainnet
+     - name: Run make setup for mainnet
         run: make setup
 
       - name: Run gofmt
-        run: gofmt
+        run: |
+          gofmt
 
       - name: Run golangci-lint
-        run: golangci-lint run -v --timeout 5m
+        run: |
+          golangci-lint run -v --timeout 5m
 
       - name: Execute test case
         run: >
           go-acc ./... --ignore razor/accounts/mocks --ignore razor/cmd/mocks
           --ignore razor/utils/mocks --ignore pkg --ignore razor/path/mocks
           --output coverage.txt
-
       - name: Run benchmarks
-        run: go test ./... -bench=. -run=^#
-
+        run: |
+          go test ./... -bench=. -run=^#
       - name: Publish Coverage to Coveralls.io
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: goveralls -coverprofile=coverage.txt -service=github
 
-  # build-amd:
-  #   runs-on: ubuntu-latest
+  # release:
   #   needs: test
-  #   steps:
-  #     #... (Keep the same steps for building and uploading the AMD artifact)
-
-  # build-arm:
+  #   if: github.event_name == 'push' && contains(github.ref, 'tags')
   #   runs-on: ubuntu-latest
-  #   needs: test
   #   steps:
-  #     #... (Keep the same steps for building and uploading the ARM artifact)
-
-  # publish-github-release:
-  #   runs-on: ubuntu-latest
-  #   needs:
-  #     - build-amd
-  #     - build-arm
-  #   if: startsWith(github.ref, 'refs/tags/v')
-  #   steps:
-  #     #... (Keep the same steps for publishing to GitHub releases)
-
-  # push-docker-build:
-  #   runs-on: ubuntu-latest
-  #   needs: test
-  #   if: startsWith(github.ref, 'refs/tags/v')
-  #   steps:
-  #     #... (Keep the same steps for building and pushing the Docker image)
+  #     - name: Create Release
+  #       uses: actions/create-release@v1
+  #       with:
+  #         tag_name: ${{ github.ref }}
+  #         release_name: Release ${{ github.ref }}
+  #         draft: false
+  #         prerelease: false
